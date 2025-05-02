@@ -22,7 +22,7 @@ class JWTRotationService {
     this.addNewKey();
   }
 
-  private addNewKey(): void {
+  private addNewKey(): JWTKey {
     console.debug('[JWTRotationService] Generating new RSA key pair...');
     const key = new NodeRSA({b: 2048});
     const newKey: JWTKey = {
@@ -31,38 +31,51 @@ class JWTRotationService {
       publicKey: key.exportKey('public'),
       createdAt: Date.now(),
     };
-    this.keys.unshift(newKey);
+    
+    this.keys = [newKey, ...(this.keys ?? [])];
     this.removeExpiredKeys();
+    
     console.debug('[JWTRotationService] New key generated:', { 
       keyId: newKey.id, 
       createdAt: new Date(newKey.createdAt).toISOString() 
     });
     console.log(`JWT keys rotated successfully. Next rotation: ${new Date(newKey.createdAt + this.keyLifetime).toISOString()}`);
+    
+    return newKey;
   }
 
   private removeExpiredKeys(): void {
     const now = Date.now();
-    const beforeCount = this.keys.length;
-    this.keys = this.keys
-      .filter(key => now - key.createdAt <= this.keyLifetime)
+    const beforeCount = this.keys?.length ?? 0;
+    
+    this.keys = (this.keys ?? [])
+      .filter(key => key && now - key.createdAt <= this.keyLifetime)
       .slice(0, this.maxKeys);
+      
     console.debug('[JWTRotationService] Removed expired keys:', { 
       beforeCount, 
-      afterCount: this.keys.length 
+      afterCount: this.keys?.length ?? 0
     });
   }
 
-  private getCurrentKey(): JWTKey {
+  getCurrentKey(): JWTKey {
     console.debug('[JWTRotationService] Getting current key...');
-    if (this.keys.length === 0 || Date.now() - this.keys[0].createdAt > this.keyLifetime) {
+    
+    const currentKey = this.keys?.[0];
+    if (!currentKey || Date.now() - currentKey.createdAt > this.keyLifetime) {
       console.debug('[JWTRotationService] No valid keys found or current key expired, generating new key');
-      this.addNewKey();
+      return this.addNewKey();
     }
-    return this.keys[0];
+    
+    return currentKey;
   }
 
   generateToken(payload: object): string {
     const currentKey = this.getCurrentKey();
+    if (!currentKey?.privateKey) {
+      throw new Error('Failed to generate token: No valid private key available');
+    }
+    
     console.debug('[JWTRotationService] Generating token with key:', { keyId: currentKey.id });
     return sign(
       { ...payload, keyId: currentKey.id },
@@ -75,10 +88,16 @@ class JWTRotationService {
   }
 
   verifyToken(token: string): any {
+    if (!token) {
+      throw new Error('Token is required');
+    }
+    
     console.debug('[JWTRotationService] Attempting to verify token');
-    let lastError = null;
+    let lastError: Error | null = null;
 
-    for (const key of this.keys) {
+    for (const key of (this.keys ?? [])) {
+      if (!key?.publicKey) continue;
+      
       try {
         console.debug('[JWTRotationService] Trying verification with key:', { keyId: key.id });
         const decoded = verify(token, key.publicKey, { algorithms: [JWT_CONFIG.algorithm] });
@@ -87,9 +106,9 @@ class JWTRotationService {
       } catch (error) {
         console.debug('[JWTRotationService] Verification failed with key:', { 
           keyId: key.id, 
-          error: error.message 
+          error: error instanceof Error ? error.message : 'Unknown error'
         });
-        lastError = error;
+        lastError = error instanceof Error ? error : new Error('Unknown error');
       }
     }
 
