@@ -7,7 +7,8 @@
     "rotate-keys": "ts-node src/services/jwt-rotation.ts",
     "start": "ts-node src/index.ts",
     "build": "tsc",
-    "lint": "eslint . --ext .ts"
+    "lint": "eslint . --ext .ts",
+    "scan:pci": "pci-scan"
   },
   "dependencies": {
     "@types/jsonwebtoken": "^9.0.5",
@@ -27,6 +28,7 @@
     "ts-jest": "^29.1.1",
     "eslint": "8.56.0",
     "@typescript-eslint/parser": "6.14.0",
-    "@typescript-eslint/eslint-plugin": "^6.14.0"
+    "@typescript-eslint/eslint-plugin": "^6.14.0",
+    "pci-scan": "^1.0.0"
   }
 }
