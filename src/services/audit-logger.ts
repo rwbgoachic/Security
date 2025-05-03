@@ -5,17 +5,30 @@ interface AuditLog {
   action: string;
   userId?: string;
   details: object;
+  severity: 'info' | 'warning' | 'error';
+  source: string;
+  correlationId?: string;
 }
 
 export class AuditLogger {
   private static readonly secretKey = process.env.AUDIT_ENCRYPTION_KEY || 'default-key';
+  private static readonly source = 'payment-service';
 
-  static async log(action: string, userId: string | undefined, details: object): Promise<void> {
+  static async log(
+    action: string, 
+    userId: string | undefined, 
+    details: object,
+    severity: 'info' | 'warning' | 'error' = 'info',
+    correlationId?: string
+  ): Promise<void> {
     const auditLog: AuditLog = {
       timestamp: new Date().toISOString(),
       action,
       userId,
       details,
+      severity,
+      source: this.source,
+      correlationId
     };
 
     const encryptedLog = EncryptionUtils.encrypt(
@@ -29,8 +42,13 @@ export class AuditLogger {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${process.env.AUDIT_SERVICE_TOKEN}`,
+          'X-Correlation-ID': correlationId || '',
         },
-        body: JSON.stringify({ log: encryptedLog }),
+        body: JSON.stringify({ 
+          log: encryptedLog,
+          severity,
+          source: this.source
+        }),
       });
 
       if (!response.ok) {
