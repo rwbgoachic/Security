@@ -22,7 +22,7 @@ class JWTRotationService {
     this.addNewKey();
   }
 
-  private addNewKey(): JWTKey {
+  private addNewKey(force = false): JWTKey {
     console.debug('[JWTRotationService] Generating new RSA key pair...');
     const key = new NodeRSA({b: 2048});
     const newKey: JWTKey = {
@@ -39,7 +39,7 @@ class JWTRotationService {
       keyId: newKey.id, 
       createdAt: new Date(newKey.createdAt).toISOString() 
     });
-    console.log(`JWT keys rotated successfully. Next rotation: ${new Date(newKey.createdAt + this.keyLifetime).toISOString()}`);
+    console.log(`[Security] Keys rotated. Next: ${new Date(newKey.createdAt + this.keyLifetime).toISOString()}`);
     
     return newKey;
   }
@@ -58,13 +58,13 @@ class JWTRotationService {
     });
   }
 
-  getCurrentKey(): JWTKey {
+  getCurrentKey(force = false): JWTKey {
     console.debug('[JWTRotationService] Getting current key...');
     
     const currentKey = this.keys?.[0];
-    if (!currentKey || Date.now() - currentKey.createdAt > this.keyLifetime) {
-      console.debug('[JWTRotationService] No valid keys found or current key expired, generating new key');
-      return this.addNewKey();
+    if (force || !currentKey || Date.now() - currentKey.createdAt > this.keyLifetime) {
+      console.debug('[JWTRotationService] Forcing new key generation or no valid keys found');
+      return this.addNewKey(force);
     }
     
     return currentKey;
@@ -119,7 +119,8 @@ class JWTRotationService {
 
 export const jwtRotationService = new JWTRotationService();
 
-// Add this line to execute key rotation when this file is run directly
+// Handle force flag when running directly
 if (require.main === module) {
-  jwtRotationService.getCurrentKey();
+  const force = process.argv.includes('--force');
+  jwtRotationService.getCurrentKey(force);
 }
