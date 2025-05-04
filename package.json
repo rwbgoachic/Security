@@ -8,7 +8,9 @@
     "start": "ts-node src/index.ts",
     "build": "tsc",
     "lint": "eslint . --ext .ts",
-    "scan:pci": "pci-scan"
+    "scan:pci": "pci-scan",
+    "encrypt:env": "dotenv-encrypted encrypt",
+    "decrypt:env": "dotenv-encrypted decrypt"
   },
   "dependencies": {
     "@types/jsonwebtoken": "^9.0.5",
@@ -16,14 +18,15 @@
     "uuid": "^9.0.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3",
-    "node-rsa": "^1.1.1"
+    "node-rsa": "^1.1.1",
+    "dotenv-encrypted": "^1.0.0"
   },
   "devDependencies": {
     "@types/uuid": "^9.0.7",
     "@types/node-rsa": "^1.1.4",
     "@types/node": "^20.10.5",
     "@types/crypto-js": "^4.2.1",
-    "@types/jest": "^29.5.11",
+    "@types/jest": "^29.7.11",
     "jest": "^29.7.0",
     "ts-jest": "^29.1.1",
     "eslint": "8.56.0",
