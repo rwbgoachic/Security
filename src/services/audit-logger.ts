@@ -1,4 +1,5 @@
 import { EncryptionUtils } from './encryption-utils';
+import { createHash } from 'crypto';
 
 interface AuditLog {
   timestamp: string;
@@ -8,11 +9,39 @@ interface AuditLog {
   severity: 'info' | 'warning' | 'error';
   source: string;
   correlationId?: string;
+  hash?: string;
 }
 
 export class AuditLogger {
   private static readonly secretKey = process.env.AUDIT_ENCRYPTION_KEY || 'default-key';
   private static readonly source = 'payment-service';
+  private static readonly PII_FIELDS = ['email', 'phone', 'address', 'name', 'ssn', 'creditCard'];
+
+  private static hashLog(log: AuditLog): string {
+    const hash = createHash('sha256');
+    hash.update(JSON.stringify(log));
+    return hash.digest('hex');
+  }
+
+  private static redactPII(obj: any): any {
+    if (typeof obj !== 'object' || obj === null) {
+      return obj;
+    }
+
+    if (Array.isArray(obj)) {
+      return obj.map(item => this.redactPII(item));
+    }
+
+    const redacted = { ...obj };
+    for (const key in redacted) {
+      if (this.PII_FIELDS.includes(key.toLowerCase())) {
+        redacted[key] = '[REDACTED]';
+      } else if (typeof redacted[key] === 'object') {
+        redacted[key] = this.redactPII(redacted[key]);
+      }
+    }
+    return redacted;
+  }
 
   static async log(
     action: string, 
@@ -25,11 +54,14 @@ export class AuditLogger {
       timestamp: new Date().toISOString(),
       action,
       userId,
-      details,
+      details: this.redactPII(details),
       severity,
       source: this.source,
       correlationId
     };
+
+    // Generate immutable hash before encryption
+    auditLog.hash = this.hashLog(auditLog);
 
     const encryptedLog = EncryptionUtils.encrypt(
       JSON.stringify(auditLog),
@@ -43,6 +75,7 @@ export class AuditLogger {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${process.env.AUDIT_SERVICE_TOKEN}`,
           'X-Correlation-ID': correlationId || '',
+          'X-Log-Hash': auditLog.hash,
         },
         body: JSON.stringify({ 
           log: encryptedLog,
