@@ -5,12 +5,14 @@ export class EncryptionUtils {
   private static readonly KEY_LENGTH = 32;
   private static readonly IV_LENGTH = 12;
   private static readonly AUTH_TAG_LENGTH = 16;
+  private static readonly SALT_LENGTH = 16;
 
   static encrypt(text: string, secretKey: string): string {
-    const key = crypto.scryptSync(secretKey, 'salt', this.KEY_LENGTH);
+    const salt = crypto.randomBytes(this.SALT_LENGTH);
+    const key = crypto.pbkdf2Sync(secretKey, salt, 100000, this.KEY_LENGTH, 'sha512');
     const iv = crypto.randomBytes(this.IV_LENGTH);
-    const cipher = crypto.createCipheriv(this.ALGORITHM, key, iv);
     
+    const cipher = crypto.createCipheriv(this.ALGORITHM, key, iv);
     const encrypted = Buffer.concat([
       cipher.update(text, 'utf8'),
       cipher.final()
@@ -18,17 +20,18 @@ export class EncryptionUtils {
     
     const authTag = cipher.getAuthTag();
     
-    return Buffer.concat([iv, encrypted, authTag]).toString('base64');
+    return Buffer.concat([salt, iv, encrypted, authTag]).toString('base64');
   }
 
   static decrypt(encryptedText: string, secretKey: string): string {
-    const key = crypto.scryptSync(secretKey, 'salt', this.KEY_LENGTH);
     const buffer = Buffer.from(encryptedText, 'base64');
     
-    const iv = buffer.subarray(0, this.IV_LENGTH);
+    const salt = buffer.subarray(0, this.SALT_LENGTH);
+    const iv = buffer.subarray(this.SALT_LENGTH, this.SALT_LENGTH + this.IV_LENGTH);
     const authTag = buffer.subarray(buffer.length - this.AUTH_TAG_LENGTH);
-    const encrypted = buffer.subarray(this.IV_LENGTH, buffer.length - this.AUTH_TAG_LENGTH);
+    const encrypted = buffer.subarray(this.SALT_LENGTH + this.IV_LENGTH, buffer.length - this.AUTH_TAG_LENGTH);
     
+    const key = crypto.pbkdf2Sync(secretKey, salt, 100000, this.KEY_LENGTH, 'sha512');
     const decipher = crypto.createDecipheriv(this.ALGORITHM, key, iv);
     decipher.setAuthTag(authTag);
     

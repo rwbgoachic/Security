@@ -36,6 +36,9 @@ export class AuditLogger {
     for (const key in redacted) {
       if (this.PII_FIELDS.includes(key.toLowerCase())) {
         redacted[key] = '[REDACTED]';
+      } else if (typeof redacted[key] === 'string') {
+        // Redact credit card numbers
+        redacted[key] = redacted[key].replace(/(\d{4}-\d{4}-\d{4})-\d{4}/g, '$1-****');
       } else if (typeof redacted[key] === 'object') {
         redacted[key] = this.redactPII(redacted[key]);
       }
