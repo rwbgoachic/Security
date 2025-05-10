@@ -1,6 +1,6 @@
 import { loadStripe } from '@stripe/stripe-js';
 
-const stripePromise = loadStripe(process.env.FLUIDPAY_KEY);
+const stripePromise = loadStripe("api_2wuAslzZsNIUBGGlxNQzrqKnS1B");
 
 export async function initializePayment() {
   const stripe = await stripePromise;
