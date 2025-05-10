@@ -23,7 +23,8 @@
     "typescript": "5.3.3",
     "node-rsa": "1.1.1",
     "dotenv-encrypted": "^1.0.0",
-    "node-cron": "3.0.3"
+    "node-cron": "3.0.3",
+    "common-utils": "1.2.0"
   },
   "devDependencies": {
     "@types/uuid": "^9.0.7",
