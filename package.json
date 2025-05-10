@@ -5,7 +5,7 @@
     "test": "jest",
     "test:audit": "jest src/services/__tests__/audit-logger.test.ts",
     "rotate-keys": "ts-node src/services/jwt-rotation.ts",
-    "start": "ts-node src/index.ts",
+    "start": "node /home/project/dist/index.js",
     "build": "tsc",
     "lint": "eslint . --ext .ts",
     "scan:pci": "pci-scan",
@@ -15,14 +15,15 @@
     "pentest": "ts-node src/security/pentest.ts"
   },
   "dependencies": {
+    "@stripe/stripe-js": "^2.4.0",
     "@types/jsonwebtoken": "^9.0.5",
-    "jsonwebtoken": "^9.0.2",
-    "uuid": "^9.0.1",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.3.3",
-    "node-rsa": "^1.1.1",
+    "jsonwebtoken": "9.0.2",
+    "uuid": "9.0.1",
+    "ts-node": "10.9.2",
+    "typescript": "5.3.3",
+    "node-rsa": "1.1.1",
     "dotenv-encrypted": "^1.0.0",
-    "node-cron": "^3.0.3"
+    "node-cron": "3.0.3"
   },
   "devDependencies": {
     "@types/uuid": "^9.0.7",

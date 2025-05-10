@@ -10,16 +10,28 @@ interface AuditLog {
   source: string;
   correlationId?: string;
   hash?: string;
+  previousHash?: string;
 }
 
 export class AuditLogger {
   private static readonly secretKey = process.env.AUDIT_ENCRYPTION_KEY || 'default-key';
   private static readonly source = 'payment-service';
   private static readonly PII_FIELDS = ['email', 'phone', 'address', 'name', 'ssn', 'creditCard'];
+  private static lastHash: string | null = null;
 
   private static hashLog(log: AuditLog): string {
     const hash = createHash('sha256');
-    hash.update(JSON.stringify(log));
+    const dataToHash = JSON.stringify({
+      timestamp: log.timestamp,
+      action: log.action,
+      userId: log.userId,
+      details: log.details,
+      severity: log.severity,
+      source: log.source,
+      correlationId: log.correlationId,
+      previousHash: log.previousHash
+    });
+    hash.update(dataToHash);
     return hash.digest('hex');
   }
 
@@ -60,11 +72,13 @@ export class AuditLogger {
       details: this.redactPII(details),
       severity,
       source: this.source,
-      correlationId
+      correlationId,
+      previousHash: this.lastHash
     };
 
-    // Generate immutable hash before encryption
+    // Generate hash including the previous hash for chain linking
     auditLog.hash = this.hashLog(auditLog);
+    this.lastHash = auditLog.hash;
 
     const encryptedLog = EncryptionUtils.encrypt(
       JSON.stringify(auditLog),
@@ -79,6 +93,7 @@ export class AuditLogger {
           'Authorization': `Bearer ${process.env.AUDIT_SERVICE_TOKEN}`,
           'X-Correlation-ID': correlationId || '',
           'X-Log-Hash': auditLog.hash,
+          'X-Previous-Hash': auditLog.previousHash || '',
         },
         body: JSON.stringify({ 
           log: encryptedLog,
